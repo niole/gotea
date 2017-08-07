@@ -8,8 +8,18 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-var teaSites = [1]string{
+var teaSites = [...]string{
 	"https://verdanttea.com/",
+}
+
+var teaTypes = [...]string{
+	"oolong",
+	"black",
+	"white",
+	"grean",
+	"herbal",
+	"yellow",
+	"fermented",
 }
 
 var tags = [...]string{
@@ -26,7 +36,15 @@ var tags = [...]string{
 	"h2",
 	"h3",
 	"h4",
+	"article",
 }
+
+/*
+	visit site
+	look for teaTypes
+	if hyperlink, crawl if not seen
+	if not hyperlink, save for language processing
+*/
 
 func ExampleScrape() {
 	doc, err := goquery.NewDocument(teaSites[0])
@@ -35,10 +53,10 @@ func ExampleScrape() {
 	}
 
 	// Find the review items
-	found := doc.Find("span").FilterFunction(func(i int, node *goquery.Selection) bool {
+	found := doc.Find("a").FilterFunction(func(i int, node *goquery.Selection) bool {
 		text := node.Text()
 
-		matched, err := regexp.MatchString("oolong", text)
+		matched, err := regexp.MatchString("Oolong", text)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -46,10 +64,9 @@ func ExampleScrape() {
 		return matched
 	})
 
-	fmt.Printf("%s", found)
-
 	found.Each(func(i int, s *goquery.Selection) {
-		fmt.Printf(s.Text())
+		href, _ := s.Attr("href")
+		fmt.Printf("href: %s, text: %s ", href, s.Text())
 	})
 
 }
