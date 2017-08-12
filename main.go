@@ -35,24 +35,12 @@ func Match(pattern string, in string) bool {
 }
 
 func MatchStart(substring string, in string) bool {
-	return regexp.MustCompile(`(?i)^` + substring).MatchString(in)
+	return regexp.MustCompile(`(?i)^`+substring).MatchString(in) ||
+		regexp.MustCompile(`(?i)^`+in).MatchString(substring)
 }
 
 var tags = []string{
-	//	"span",
-	//	"div",
-	//	"p",
-	//	"text",
-	//	"li",
-	//	"button",
 	"a",
-	//	"select",
-	//	"option",
-	//	"h1",
-	//	"h2",
-	//	"h3",
-	//	"h4",
-	//	"article",
 }
 
 type Tea struct {
@@ -101,15 +89,6 @@ func (t *MaybeTea) GetDocument() *goquery.Document {
 	}
 
 	return doc
-}
-
-func MatchString(toFind string, in string) bool {
-	matched, err := regexp.MatchString(toFind, in)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return matched
 }
 
 /*
