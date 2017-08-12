@@ -13,7 +13,10 @@ var teaSites = []string{
 }
 
 var teaTypes = []string{
-	`(?i)\btea\b`,
+	`(?i)\bpu'er\b`,
+	`(?i)\bpuer\b`,
+	`(?i)\bpu 'er\b`,
+	`(?i)\bpu er\b`,
 	`(?i)\boolong\b`,
 	`(?i)\bblack\b`,
 	`(?i)\bwhite\b`,
@@ -114,6 +117,7 @@ func (t *Crawler) GetNextLink() string {
 		}
 
 		if !t.seen[next] {
+			t.seen[next] = true
 			return next
 		}
 		return t.GetNextLink()
