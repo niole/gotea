@@ -1,0 +1,64 @@
+This documents holds all notes
+
+goal: be able to search for tea based on flavor profiles
+
+needs:
+
+Must find information on tea and somehow link flavor profiles to teas.
+Must be able to link names of teas and flavor profiles.
+Must be able to identify words that describe tea flavor.
+Must be able to identify tea names.
+
+  * tea names are proper nouns
+  * sometimes they end with the word tea
+  * when looking for tea, it is often categorized under some overall
+    category of tea (black, green, ...)
+  * tea flavors describe teas
+
+
+Use a dependency parser to determine parts of speech and descriptors of
+tea.
+When going through a website that sells tea, the user flow often looks
+like this:
+
+General tea category ->
+types of tea in that category ->
+specific type of tea
+
+Could use the user flow to determine what nouns are tea. Could use a
+dependency graph to get a general idea of what to look for next and then
+use the user flow to confirm.
+
+Once one noun is confirmed to be a tea, could use the DOM structure
+which renders that tea name to infer other tea names. If that DOM
+structure repeats itself, can safely assume that the other elements
+rendered in that structure to be of the same kind.
+
+Once a type of tea has been confirmed, data on the flavor profile could
+come from that tea's description and from user reviews. Shopping
+sites often have sections dedicated to both concepts. The description is
+always on the same page as the tea's title. They don't always have
+reviews. When they do, they tend to also be on the same page.
+
+Must store this data somewhere so that a user facing app can convey
+insites to users, like a data base.
+
+Teas are indexed by their flavor profiles, however since the process
+which informs this data base has no limits in terms of phrases used and
+tea spellings or the varieties of tea stored, store updates will always
+touch all records.
+
+This also means that the total set of terms in all teas' flavor profiles
+could expand infinitely. The interface shown to the user could take this
+into account by allowing the user to specify as many of the existing
+terms as they would like. This sound like the easiest way to go.
+
+I will get this information by crawling a set of known tea sites. I will
+do this by maintaining a stack of links to visit and a visited set of
+links. Once I have visited all links, the crawler will stop.
+
+It is important to maintain ordering of links while visiting each one,
+as if the crawler were an actual user traversing websites. Valuable
+information contained in what we have just seen versus what we see at
+the current point of analysis can illustrate the meaning of certain
+information.
