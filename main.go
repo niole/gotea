@@ -37,7 +37,7 @@ var teaCategoryPattern = strings.Join(teaTypes, " tea ") + " tea" + strings.Join
 var originPattern = regexp.MustCompile("(https://www..+.com|http://www..+.com)")
 var urlDelimeterReplacer = strings.NewReplacer("_", " ", "-", " ", ".", " ", "/", " ", "html", "")
 var multilinePattern = regexp.MustCompile("\n")
-var tabPatter = regexp.MustCompile("\t")
+var tabPattern = regexp.MustCompile("\t")
 
 func ExtractHyperlinkContent(link string) string {
 	origin := GetOrigin(link)
@@ -96,41 +96,33 @@ func (t *MaybeTea) Convert(name string, data string) *Tea {
 
 func GetText(node *goquery.Selection) string {
 	text := multilinePattern.ReplaceAllString(node.Text(), "")
-	text = strings.Trim(text, " ")
-	text = tabPatter.ReplaceAllString(text, "")
+	text = tabPattern.ReplaceAllString(text, "")
 	return strings.Trim(text, " ")
 }
 
 func (t *MaybeTea) ConfirmConvertTeaType() (*Tea, bool) {
-	doc := t.GetDocument()
-	headers := doc.Find("h1").FilterFunction(func(i int, node *goquery.Selection) bool {
-		content := GetText(node)
-		fmt.Printf("content in confirm: %s, name in confirm: %s", content, t.name)
-		fmt.Println("")
+	doc, err := t.GetDocument()
+	if err == nil {
+		headers := doc.Find("h1").FilterFunction(func(i int, node *goquery.Selection) bool {
+			content := GetText(node)
+			return HasOverlap(content, t.name)
+		})
 
-		return HasOverlap(content, t.name)
-	})
+		if headers.Length() == 1 {
+			header := GetText(headers.First())
+			data := doc.Text()
 
-	if headers.Length() == 1 {
-		fmt.Println("SHOULD BE TEA")
-		header := GetText(headers.First())
-		data := doc.Text()
-
-		// in the case that the previously found name has extra stuff on the end
-		// and assuming that the header will only contain the name
-		return t.Convert(header, data), true
+			// in the case that the previously found name has extra stuff on the end
+			// and assuming that the header will only contain the name
+			return t.Convert(header, data), true
+		}
 	}
 
 	return &Tea{MaybeTea{"", ""}, ""}, false
 }
 
-func (t *MaybeTea) GetDocument() *goquery.Document {
-	doc, err := goquery.NewDocument(t.link)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return doc
+func (t *MaybeTea) GetDocument() (*goquery.Document, err) {
+	return goquery.NewDocument(t.link)
 }
 
 /*
@@ -176,8 +168,6 @@ func (t *Crawler) GetNextLink() string {
 
 func (t *Crawler) ScrapeSites() *Crawler {
 	nextLink := t.GetNextLink()
-	fmt.Printf("next linke: %s", nextLink)
-	fmt.Println("")
 
 	if nextLink != "" {
 		doc, err := goquery.NewDocument(nextLink)
@@ -190,7 +180,6 @@ func (t *Crawler) ScrapeSites() *Crawler {
 		return t.ScrapeSites()
 	}
 
-	fmt.Println("done", t.tea)
 	return t
 }
 
@@ -223,8 +212,6 @@ func (t *Crawler) ScrapePage(doc *goquery.Document, baseLink string) *Crawler {
 				if Match(teaType, content) {
 					// if basic tea type is found in the hyperlink's relevant content
 					// check to see if could be specific tea type
-					fmt.Printf("content: %s", content)
-					fmt.Println("")
 
 					if Match(content, teaCategoryPattern) {
 						// let main crawler handle getting through tea categories and going
@@ -262,14 +249,10 @@ func (t *Crawler) ProcessMaybes() {
 	total := len(t.possibleTea)
 
 	if total > 0 {
-		fmt.Println("ProcessMaybes")
 		next := t.possibleTea[0:1][0]
 		tea, converted := next.ConfirmConvertTeaType()
 
 		if converted {
-			fmt.Printf("name: %s, link: %s", tea.name, tea.link)
-			fmt.Println("")
-
 			t.tea = append(t.tea, tea)
 		}
 
@@ -305,5 +288,4 @@ func ScrapeSite() {
 
 func main() {
 	ScrapeSite()
-	//	fmt.Println(strings.Trim("   sdfsdf  ", " "))
 }
