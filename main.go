@@ -253,6 +253,7 @@ func (t *Crawler) ProcessMaybes() {
 		tea, converted := next.ConfirmConvertTeaType()
 
 		if converted {
+			// TODO stick in DB
 			t.tea = append(t.tea, tea)
 		}
 
@@ -286,6 +287,6 @@ func ScrapeSite() {
 	tg.ScrapeSites()
 }
 
-func main() {
-	ScrapeSite()
-}
+//func main() {
+//	ScrapeSite()
+//}
