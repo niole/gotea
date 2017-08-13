@@ -10,7 +10,8 @@ import (
 )
 
 var teaSites = []string{
-	"https://verdanttea.com/",
+	"http://www.adagio.com",
+	"https://verdanttea.com",
 }
 
 var teaTypes = []string{
@@ -31,7 +32,14 @@ var teaTypes = []string{
 	`fermented`,
 }
 
-var teaCategoryPattern = strings.Join(teaTypes, " tea ") + " tea"
+var relativePathPattern = regexp.MustCompile("^/")
+var teaCategoryPattern = strings.Join(teaTypes, " tea ") + " tea" + strings.Join(teaTypes, " teas ") + " teas"
+var originPattern = regexp.MustCompile("(https://www..+.com|http://www..+.com)")
+var urlDelimeterReplacer = strings.NewReplacer("_", " ", "-", " ", ".", " ", "/", " ")
+
+func RemoveUrlDelmeters(url string) string {
+	return urlDelimeterReplacer.Replace(url)
+}
 
 func Match(toFind string, in string) bool {
 	return regexp.MustCompile(fmt.Sprintf(`(?i)\b%s\b`, toFind)).MatchString(in)
@@ -42,8 +50,18 @@ func MatchStart(substring string, in string) bool {
 		regexp.MustCompile(`(?i)^`+in).MatchString(substring)
 }
 
-var tags = []string{
-	"a",
+func GetOrigin(url string) string {
+	return originPattern.FindString(url)
+}
+
+func NormalizeLink(link string, originLink string) string {
+	if relativePathPattern.MatchString(link) {
+		// normalize the relative path
+		extractedOrigin := GetOrigin(originLink)
+		return fmt.Sprintf("%s%s", extractedOrigin, link)
+	}
+
+	return link
 }
 
 type Tea struct {
@@ -126,8 +144,8 @@ func (t *Crawler) GetNextLink() string {
 			t.links = make([]string, 0)
 		}
 
-		if !t.seen[next] {
-			t.seen[next] = true
+		if !t.Visited(next) {
+			t.UpdateVisited(next)
 			return next
 		}
 		return t.GetNextLink()
@@ -147,7 +165,7 @@ func (t *Crawler) ScrapeSites() *Crawler {
 			return t.ScrapeSites()
 		}
 
-		t.ScrapePage(doc)
+		t.ScrapePage(doc, nextLink)
 		return t.ScrapeSites()
 	}
 
@@ -166,43 +184,63 @@ func (t *Crawler) AddMaybeTea(link string, name string) *MaybeTea {
 	return tea
 }
 
-func (t *Crawler) ScrapePage(doc *goquery.Document) *Crawler {
+func (t *Crawler) ScrapePage(doc *goquery.Document, baseLink string) *Crawler {
 	for _, teaType := range teaTypes {
-		for _, tag := range tags {
-			found := doc.Find(tag).FilterFunction(func(i int, node *goquery.Selection) bool {
-				href, exists := node.Attr("href")
+		found := doc.Find("a").FilterFunction(func(i int, node *goquery.Selection) bool {
+			href, exists := node.Attr("href")
 
-				if exists && t.seen[href] {
+			if exists {
+
+				if t.Visited(href) {
+					// TODO checking if seen only works here if the href is not relative
 					return false
 				}
 
 				text := node.Text()
-				return Match(teaType, text)
-			})
 
-			found.Each(func(i int, s *goquery.Selection) {
-				href, exists := s.Attr("href")
-				text := s.Text()
-
-				if !Match(text, teaCategoryPattern) {
-					// let MaybeTea handle more specific tea finding
-
-					t.AddMaybeTea(href, text)
-					t.ProcessMaybes()
-				} else if exists {
-					// let main crawler handle getting through tea categories and going
-					// between sites
-
-					t.links = append(t.links, href)
+				if text != "" {
+					return Match(teaType, text)
 				}
 
-			})
+				normalizedHref := RemoveUrlDelmeters(href)
 
-		}
+				return Match(teaType, normalizedHref)
+
+			}
+			return false
+		})
+
+		found.Each(func(i int, s *goquery.Selection) {
+			href, exists := s.Attr("href")
+			href = NormalizeLink(href, baseLink)
+			text := s.Text()
+
+			if !Match(text, teaCategoryPattern) {
+				// let MaybeTea handle more specific tea finding
+
+				t.AddMaybeTea(href, text)
+				t.ProcessMaybes()
+			} else if exists {
+				// let main crawler handle getting through tea categories and going
+				// between sites
+
+				t.links = append(t.links, href)
+			}
+
+		})
+
 	}
 
 	return t
 
+}
+
+func (t *Crawler) Visited(link string) bool {
+	return t.seen[link]
+}
+
+func (t *Crawler) UpdateVisited(link string) {
+	t.seen[link] = true
 }
 
 /*
@@ -222,7 +260,7 @@ func (t *Crawler) ProcessMaybes() {
 			t.tea = append(t.tea, tea)
 		}
 
-		t.seen[tea.link] = true
+		t.UpdateVisited(tea.link)
 
 		if total > 1 {
 			t.possibleTea = t.possibleTea[1:]
@@ -253,6 +291,5 @@ func ScrapeSite() {
 }
 
 func main() {
-	fmt.Println(teaCategoryPattern)
 	ScrapeSite()
 }
