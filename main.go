@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -13,25 +14,27 @@ var teaSites = []string{
 }
 
 var teaTypes = []string{
-	`(?i)\bpu'er\b`,
-	`(?i)\bpuer\b`,
-	`(?i)\bpu 'er\b`,
-	`(?i)\bpu er\b`,
-	`(?i)\bpu-er\b`,
-	`(?i)\bchai\b`,
-	`(?i)\bmatcha\b`,
-	`(?i)\brooibos\b`,
-	`(?i)\boolong\b`,
-	`(?i)\bblack\b`,
-	`(?i)\bwhite\b`,
-	`(?i)\bgrean\b`,
-	`(?i)\bherbal\b`,
-	`(?i)\byellow\b`,
-	`(?i)\bfermented\b`,
+	`pu'er`,
+	`puer`,
+	`pu 'er`,
+	`pu er`,
+	`pu-er`,
+	`chai`,
+	`matcha`,
+	`rooibos`,
+	`oolong`,
+	`black`,
+	`white`,
+	`green`,
+	`herbal`,
+	`yellow`,
+	`fermented`,
 }
 
-func Match(pattern string, in string) bool {
-	return regexp.MustCompile(pattern).MatchString(in)
+var teaCategoryPattern = strings.Join(teaTypes, " tea ") + " tea"
+
+func Match(toFind string, in string) bool {
+	return regexp.MustCompile(fmt.Sprintf(`(?i)\b%s\b`, toFind)).MatchString(in)
 }
 
 func MatchStart(substring string, in string) bool {
@@ -107,10 +110,8 @@ func (t *MaybeTea) GetDocument() *goquery.Document {
 type Crawler struct {
 	links       []string
 	seen        map[string]bool
-	seenTeas    map[string]bool
 	possibleTea []*MaybeTea
 	tea         []*Tea
-	data        []string
 }
 
 func (t *Crawler) GetNextLink() string {
@@ -136,7 +137,8 @@ func (t *Crawler) GetNextLink() string {
 
 func (t *Crawler) ScrapeSites() *Crawler {
 	nextLink := t.GetNextLink()
-	fmt.Println("nextLink", nextLink)
+	fmt.Printf("nextLink: %s", nextLink)
+	fmt.Println("")
 
 	if nextLink != "" {
 		doc, err := goquery.NewDocument(nextLink)
@@ -149,7 +151,7 @@ func (t *Crawler) ScrapeSites() *Crawler {
 		return t.ScrapeSites()
 	}
 
-	fmt.Println("done")
+	fmt.Println("done", t.tea)
 	return t
 }
 
@@ -168,21 +170,32 @@ func (t *Crawler) ScrapePage(doc *goquery.Document) *Crawler {
 	for _, teaType := range teaTypes {
 		for _, tag := range tags {
 			found := doc.Find(tag).FilterFunction(func(i int, node *goquery.Selection) bool {
+				href, exists := node.Attr("href")
+
+				if exists && t.seen[href] {
+					return false
+				}
+
 				text := node.Text()
 				return Match(teaType, text)
 			})
 
 			found.Each(func(i int, s *goquery.Selection) {
 				href, exists := s.Attr("href")
-				if exists {
+				text := s.Text()
+
+				if !Match(text, teaCategoryPattern) {
+					// let MaybeTea handle more specific tea finding
+
+					t.AddMaybeTea(href, text)
+					t.ProcessMaybes()
+				} else if exists {
+					// let main crawler handle getting through tea categories and going
+					// between sites
+
 					t.links = append(t.links, href)
 				}
 
-				text := s.Text()
-
-				t.AddMaybeTea(href, text)
-				t.ProcessMaybes()
-				t.data = append(t.data, text)
 			})
 
 		}
@@ -192,8 +205,11 @@ func (t *Crawler) ScrapePage(doc *goquery.Document) *Crawler {
 
 }
 
+/*
+	ProcessMaybes handles examining elements that may be specific tea types
+	Updates seen in crawler so that the crawler doesn't explore it
+*/
 func (t *Crawler) ProcessMaybes() {
-	fmt.Println("processmaybes")
 	total := len(t.possibleTea)
 
 	if total > 0 {
@@ -201,9 +217,12 @@ func (t *Crawler) ProcessMaybes() {
 		tea, converted := next.ConfirmConvertTeaType()
 
 		if converted {
-			fmt.Println("tea name: %s", tea.name)
+			fmt.Printf("processmaybe: tea name: %s, link: %s", tea.name, tea.link)
+			fmt.Println("")
 			t.tea = append(t.tea, tea)
 		}
+
+		t.seen[tea.link] = true
 
 		if total > 1 {
 			t.possibleTea = t.possibleTea[1:]
@@ -226,15 +245,14 @@ func ScrapeSite() {
 	tg := Crawler{
 		teaSites,
 		make(map[string]bool),
-		make(map[string]bool),
 		make([]*MaybeTea, 0),
 		make([]*Tea, 0),
-		make([]string, 0),
 	}
 
 	tg.ScrapeSites()
 }
 
 func main() {
+	fmt.Println(teaCategoryPattern)
 	ScrapeSite()
 }
