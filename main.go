@@ -104,14 +104,45 @@ func TrimContent(content string) string {
 }
 
 /*
+	Creates regex that will match content that contains
+	phrases that uniquely identify the tea from which the regex
+	is derived
+*/
+func CreateTeaNamePattern(teaName string) *regexp.Regexp {
+	// break name into sequential elements
+	// use anything that isn't solely a tea category in an "or" pattern
+
+	teaElements := strings.Split(teaName, " ")
+	subTeas := make([]string, 0)
+
+	for i := 0; i < len(teaElements)-1; i++ {
+		for j := i + 1; j < len(teaElements)+1; j++ {
+			nextSubTea := ""
+			for k := i; k < j; k++ {
+				nextSubTea += fmt.Sprintf(" %s", teaElements[k])
+			}
+
+			if !Match(nextSubTea, teaCategoryPattern) {
+				subTeas = append(subTeas, strings.Trim(nextSubTea, " "))
+			}
+
+		}
+	}
+
+	patternString := fmt.Sprintf(`(?i)%s`, strings.Join(subTeas, "|"))
+	return regexp.MustCompile(patternString)
+}
+
+/*
 	Valid document content is a terminal or of height 1
 	This should allow for DOM elements that serve as text containers
 	rather than structural elements
 	Shouldn't contain JS
 	Content must be reasonably long
 */
-func GetFormattedDocContent(doc *goquery.Document) string {
+func GetFormattedDocContent(doc *goquery.Document, teaName string) string {
 	doc.Find("script").Remove()
+	teaNamePattern := CreateTeaNamePattern(teaName)
 
 	content := ""
 	selection := []*goquery.Selection{doc.Find("body")}
@@ -136,10 +167,13 @@ func GetFormattedDocContent(doc *goquery.Document) string {
 
 			if totalChildren == 0 || totalChildren == totalZeroDepthChildren {
 				text := GetText(node)
-				if len(text) > 400 {
-					// no children, enough text, keep
+
+				if teaNamePattern.MatchString(text) {
+					// no children/shallow child tree
+					// at least contains substrings that likely refer to tea name
 					content += fmt.Sprintf(" %s", text)
 				}
+
 			} else {
 				// put on selection stack
 				selection = append(selection, children)
@@ -161,7 +195,7 @@ func (t *MaybeTea) ConfirmConvertTeaType() (*Tea, bool) {
 
 		if headers.Length() == 1 {
 			header := GetText(headers.First())
-			data := GetFormattedDocContent(doc)
+			data := GetFormattedDocContent(doc, header)
 
 			// in the case that the previously found name has extra stuff on the end
 			// and assuming that the header will only contain the name
@@ -304,7 +338,7 @@ func (t *Crawler) ProcessMaybes() {
 	total := len(t.possibleTea)
 
 	if total > 0 {
-		next := t.possibleTea[0:1][0]
+		next := t.possibleTea[0]
 		tea, converted := next.ConfirmConvertTeaType()
 
 		if converted {
@@ -338,4 +372,7 @@ func main() {
 	}
 
 	tg.ScrapeSites()
+
+	//	pattern := CreateTeaNamePattern("Spring Reserve Laoshan Green Tea")
+	//	fmt.Println(pattern.MatchString("there is a laoshan green around here somwhere"))
 }
