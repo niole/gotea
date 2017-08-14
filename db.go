@@ -30,7 +30,11 @@ type DataBase struct {
 }
 
 func (d *DataBase) AddTea(name string, link string, data string) {
-	d.statements["add"].Exec(name, link, data)
+	_, err := d.statements["add"].Exec(name, link, data)
+	if err != nil {
+		fmt.Printf("error in AddTea: err: %s", err)
+		fmt.Println("")
+	}
 }
 
 func (d *DataBase) Prepare(statement string) *sql.Stmt {
@@ -43,7 +47,7 @@ func (d *DataBase) Prepare(statement string) *sql.Stmt {
 }
 
 func CreateTables(db *sql.DB) {
-	query := "CREATE TABLE IF NOT EXISTS tea (id serial, name VARCHAR(255), link VARCHAR(255), data VARCHAR(255))"
+	query := "CREATE TABLE IF NOT EXISTS tea (id serial, name VARCHAR(255), link VARCHAR(255), data TEXT)"
 	_, err := db.Exec(query)
 
 	if err != nil {
@@ -82,8 +86,4 @@ func InitDatabase(user string, pw string, domain string, port string, dbName str
 	}
 
 	return db
-}
-
-func main() {
-	CreateDataBase("root", "root", "127.0.0.1", "3307", "mysql")
 }

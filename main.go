@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 
@@ -95,9 +94,61 @@ func (t *MaybeTea) Convert(name string, data string) *Tea {
 }
 
 func GetText(node *goquery.Selection) string {
-	text := multilinePattern.ReplaceAllString(node.Text(), "")
+	return TrimContent(node.Text())
+}
+
+func TrimContent(content string) string {
+	text := multilinePattern.ReplaceAllString(content, "")
 	text = tabPattern.ReplaceAllString(text, "")
 	return strings.Trim(text, " ")
+}
+
+/*
+	Valid document content is a terminal or of height 1
+	This should allow for DOM elements that serve as text containers
+	rather than structural elements
+	Shouldn't contain JS
+	Content must be reasonably long
+*/
+func GetFormattedDocContent(doc *goquery.Document) string {
+	doc.Find("script").Remove()
+
+	content := ""
+	selection := []*goquery.Selection{doc.Find("body")}
+
+	for len(selection) > 0 {
+
+		nextSelection := selection[0]
+
+		if len(selection) == 1 {
+			selection = make([]*goquery.Selection, 0)
+		} else {
+			selection = selection[1:]
+		}
+
+		// if selection height 0 and text long, keep
+		nextSelection.Each(func(i int, node *goquery.Selection) {
+			children := node.Children()
+			totalZeroDepthChildren := children.FilterFunction(func(i int, node *goquery.Selection) bool {
+				return node.Children().Length() == 0
+			}).Length()
+			totalChildren := children.Length()
+
+			if totalChildren == 0 || totalChildren == totalZeroDepthChildren {
+				text := GetText(node)
+				if len(text) > 400 {
+					// no children, enough text, keep
+					content += fmt.Sprintf(" %s", text)
+				}
+			} else {
+				// put on selection stack
+				selection = append(selection, children)
+			}
+
+		})
+	}
+
+	return TrimContent(content)
 }
 
 func (t *MaybeTea) ConfirmConvertTeaType() (*Tea, bool) {
@@ -110,7 +161,7 @@ func (t *MaybeTea) ConfirmConvertTeaType() (*Tea, bool) {
 
 		if headers.Length() == 1 {
 			header := GetText(headers.First())
-			data := doc.Text()
+			data := GetFormattedDocContent(doc)
 
 			// in the case that the previously found name has extra stuff on the end
 			// and assuming that the header will only contain the name
@@ -121,7 +172,7 @@ func (t *MaybeTea) ConfirmConvertTeaType() (*Tea, bool) {
 	return &Tea{MaybeTea{"", ""}, ""}, false
 }
 
-func (t *MaybeTea) GetDocument() (*goquery.Document, err) {
+func (t *MaybeTea) GetDocument() (*goquery.Document, error) {
 	return goquery.NewDocument(t.link)
 }
 
@@ -139,10 +190,10 @@ func (t *MaybeTea) GetDocument() (*goquery.Document, err) {
 	confirm that it's in the page's data
 */
 type Crawler struct {
+	db          *DataBase
 	links       []string
 	seen        map[string]bool
 	possibleTea []*MaybeTea
-	tea         []*Tea
 }
 
 func (t *Crawler) GetNextLink() string {
@@ -233,6 +284,10 @@ func (t *Crawler) ScrapePage(doc *goquery.Document, baseLink string) *Crawler {
 
 }
 
+func (t *Crawler) AddTea(tea *Tea) {
+	t.db.AddTea(tea.name, tea.link, tea.data)
+}
+
 func (t *Crawler) Visited(link string) bool {
 	return t.seen[link]
 }
@@ -253,8 +308,7 @@ func (t *Crawler) ProcessMaybes() {
 		tea, converted := next.ConfirmConvertTeaType()
 
 		if converted {
-			// TODO stick in DB
-			t.tea = append(t.tea, tea)
+			t.AddTea(tea)
 		}
 
 		t.UpdateVisited(tea.link)
@@ -275,18 +329,13 @@ func (t *Crawler) ProcessMaybes() {
 	if hyperlink, crawl if not seen
 	if not hyperlink, save for language processing
 */
-
-func ScrapeSite() {
+func main() {
 	tg := Crawler{
+		CreateDataBase("root", "root", "127.0.0.1", "3307", "mysql"),
 		teaSites,
 		make(map[string]bool),
 		make([]*MaybeTea, 0),
-		make([]*Tea, 0),
 	}
 
 	tg.ScrapeSites()
 }
-
-//func main() {
-//	ScrapeSite()
-//}
