@@ -2,10 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/PuerkitoBio/goquery"
 	"regexp"
 	"strings"
-
-	"github.com/PuerkitoBio/goquery"
 )
 
 var teaSites = []string{
@@ -138,10 +137,13 @@ func CreateTeaNamePattern(teaName string) *regexp.Regexp {
 	This should allow for DOM elements that serve as text containers
 	rather than structural elements
 	Shouldn't contain JS
-	Content must be reasonably long
+	Content must contain substrings that may refer to found teaName
 */
 func GetFormattedDocContent(doc *goquery.Document, teaName string) string {
+	fmt.Println("formatting content")
 	doc.Find("script").Remove()
+	doc.Find("link").Remove()
+	doc.Find("style").Remove()
 	teaNamePattern := CreateTeaNamePattern(teaName)
 
 	content := ""
@@ -157,7 +159,8 @@ func GetFormattedDocContent(doc *goquery.Document, teaName string) string {
 			selection = selection[1:]
 		}
 
-		// if selection height 0 and text long, keep
+		// if selection height 0 and/or only has children of height zero
+		// and match teaName substring, keep
 		nextSelection.Each(func(i int, node *goquery.Selection) {
 			children := node.Children()
 			totalZeroDepthChildren := children.FilterFunction(func(i int, node *goquery.Selection) bool {
@@ -175,7 +178,7 @@ func GetFormattedDocContent(doc *goquery.Document, teaName string) string {
 				}
 
 			} else {
-				// put on selection stack
+				// put on selection stack for processing
 				selection = append(selection, children)
 			}
 
@@ -265,6 +268,7 @@ func (t *Crawler) ScrapeSites() *Crawler {
 		return t.ScrapeSites()
 	}
 
+	fmt.Println("done")
 	return t
 }
 
@@ -372,7 +376,4 @@ func main() {
 	}
 
 	tg.ScrapeSites()
-
-	//	pattern := CreateTeaNamePattern("Spring Reserve Laoshan Green Tea")
-	//	fmt.Println(pattern.MatchString("there is a laoshan green around here somwhere"))
 }
