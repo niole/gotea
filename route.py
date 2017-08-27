@@ -17,7 +17,6 @@ def matcher():
 
     if request.data:
         query = json.loads(request.data)
-        print query
         userQuery = query[u'userQuery']
         teas = Tea.select().execute()
         teaMetadata = [{
