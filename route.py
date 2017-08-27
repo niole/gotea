@@ -2,12 +2,19 @@
 The api endpoint for getting the top ten
 tea matches for a user query
 """
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import json
 import dbConnection
 from scorer import getRankedMatches
 from dbConnection import Tea
 app = Flask(__name__)
+
+@app.route('/')
+def index():
+    """
+    serve view
+    """
+    return send_file('index.html')
 
 @app.route('/match', methods=['POST'])
 def matcher():
