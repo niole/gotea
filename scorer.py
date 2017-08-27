@@ -13,20 +13,12 @@ texts = [
 
 nlp = spacy.load('en')
 
-def toUnicode(string):
-    """
-    converts string to unicode
-    """
-    return unicode(string, "utf-8")
-
 def getRankedMatches(texts, queryString):
     """
     scores texts against query string and returns top 10 results
+    all unicode
     """
-    encodedTexts = map(toUnicode, texts)
-    encodedQuery = toUnicode(queryString)
-    docs = np.array([normalize(nlp(doc).vector[:,np.newaxis]).ravel() for doc in encodedTexts])
-    query = normalize(nlp(encodedQuery).vector[:,np.newaxis]).ravel()
+    docs = np.array([normalize(nlp(doc).vector[:,np.newaxis]).ravel() for doc in texts])
+    query = normalize(nlp(queryString).vector[:,np.newaxis]).ravel()
     scores = docs.dot(query.T)
-    sorted(scores, reverse=True)
-    return scores[:10]
+    return scores
