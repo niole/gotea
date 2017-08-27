@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -368,8 +369,9 @@ func (t *Crawler) ProcessMaybes() {
 	if not hyperlink, save for language processing
 */
 func main() {
+	SetEnv()
 	tg := Crawler{
-		CreateDataBase("root", "root", "127.0.0.1", "3307", "mysql"),
+		CreateDataBase(os.Getenv("DB_USER"), os.Getenv("DB_PW"), os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_NAME")),
 		teaSites,
 		make(map[string]bool),
 		make([]*MaybeTea, 0),
