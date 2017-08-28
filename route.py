@@ -36,10 +36,11 @@ def matcher():
         teaData = [t.data for t in teas]
         scores = getRankedMatches(teaData, userQuery)
         rankedTeas = zip(scores, teaMetadata)
-        sorted(
+        rankedTeas = sorted(
             rankedTeas,
             key=lambda t: t[0],
             reverse=True
         )
-        topTenMatches = [t[1] for t in rankedTeas[:10]]
-        return jsonify(topTenMatches)
+
+        matches = [t[1] for t in rankedTeas]
+        return jsonify(matches)

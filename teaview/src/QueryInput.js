@@ -23,7 +23,7 @@ const QueryInput = Vue.component('query-input', {
   },
   template: `
     <div>
-      <input type="text" v-on:keypress="onKeyPress" />
+      <input type="text" v-on:keyup="onKeyPress" />
       <button v-on:click="onSubmit">
         Submit
       </button>

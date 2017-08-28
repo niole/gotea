@@ -11,7 +11,7 @@ func CreateDataBase(user string, pw string, domain string, port string, dbName s
 	db := InitDatabase(user, pw, domain, port, dbName)
 	CreateTables(db)
 	preparedStatements := make(map[string]*sql.Stmt)
-	stmt, err := db.Prepare("INSERT INTO tea (name, link, data) VALUES (?, ?, ?)")
+	stmt, err := db.Prepare("INSERT INTO tea (name, link, data) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name=?, data=?")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -30,7 +30,9 @@ type DataBase struct {
 }
 
 func (d *DataBase) AddTea(name string, link string, data string) {
-	_, err := d.statements["add"].Exec(name, link, data)
+	// TODO upsert teas
+
+	_, err := d.statements["add"].Exec(name, link, data, name, data)
 	if err != nil {
 		fmt.Printf("error in AddTea: err: %s", err)
 		fmt.Println("")
@@ -47,7 +49,7 @@ func (d *DataBase) Prepare(statement string) *sql.Stmt {
 }
 
 func CreateTables(db *sql.DB) {
-	query := "CREATE TABLE IF NOT EXISTS tea (id serial, name VARCHAR(255), link VARCHAR(255), data TEXT)"
+	query := "CREATE TABLE IF NOT EXISTS tea (id serial, name VARCHAR(255), link VARCHAR(255), data TEXT, UNIQUE (link))"
 	_, err := db.Exec(query)
 
 	if err != nil {
