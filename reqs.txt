@@ -1,3 +1,5 @@
 spacy
 numpy
 scikit-learn
+flask
+playhouse

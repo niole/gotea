@@ -1,6 +1,7 @@
 conda install --file reqs.txt
-conda install -c conda-forge pony
 conda install -c anaconda pymysql
+conda install -c conda-forge peewee
+conda install -c blaze flask-cors
 
 #conda create -n goteaenv --file reqs.txt
 #source activate goteaenv
