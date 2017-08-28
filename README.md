@@ -10,8 +10,10 @@ Make sure you have a `secrets.py` and a `secrets.go` file. These hold relevant i
 
 ## run in dev (no prod setup)
 
-In root directory run `go run db.go secrets.go main.go`, `export FLASK_APP=route.py; flask run --reload`.
+In root directory run `go run db.go secrets.go main.go`. This script crawls sites that sell tea and aggregates information. It is a webcrawler, so it will take some time to complete. It populates the data base with information that is used to reccommend teas to users based on their text queries. It is best to let it finish before moving on.
 
-In `viewtea/` run `npm start`.
+To run the python service, run the following in the root directory: `export FLASK_APP=route.py; flask run --reload`.
 
-The app is running on `localhost:8080`, the python service is running on `localhost:5000`.
+In order to serve the GUI through which the user can query for tea, in `viewtea/` run `npm start`.
+
+The user facing application is running on `localhost:8080`, the python service is running on `localhost:5000`.
